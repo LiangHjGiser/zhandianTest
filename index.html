@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title></title>
+    <meta charset="utf-8">
+    <link href="http://101.43.193.150:8002/z-UI3/GIS/src/bootstrap.css" rel="stylesheet" />
+    <link href="http://101.43.193.150:8002/z-UI3/GIS/lib/leaflet.css" rel="stylesheet" />
+    <link href="http://101.43.193.150:8002/z-UI3/GIS/style/main.css" rel="stylesheet" />
+    <link href="http://101.43.193.150:8002/z-UI3/GIS/lib/pulse/L.Icon.Pulse.css" rel="stylesheet" />
+    <link href="http://101.43.193.150:8002/z-UI3/GIS/lib/button/easy-button.css" rel="stylesheet" />
+    <link href="http://101.43.193.150:8002/z-UI3/GIS/lib/layer/theme/default/layer.css" rel="stylesheet" />
+    <link href="http://101.43.193.150:8002/z-UI3/GIS/lib/fontAwesome/css/font-awesome.css" rel="stylesheet" />
+    <link href="http://101.43.193.150:8002/z-UI3/GIS/lib/search/leaflet-search.css" rel="stylesheet" />
+    <link href="http://101.43.193.150:8002/z-UI3/GIS/lib/src/Leaflet.NavBar.css" rel="stylesheet" />
+    <style>
+        html, body, #map {
+            height: 100%;
+        }
+
+        #title {
+            position: absolute;
+            z-index: 999;
+            top: 15px;
+            right: 25px;
+            color: #333;
+        }
+
+        /* Custom icon style */
+        .leaflet-echart-icon {
+            transition: all 1s;
+        }
+
+        .leaflet-container {
+            background: rgba(0,0,0,0);
+        }
+
+        .my-div-icon {
+            font-size: 14px;
+            color: black;
+        }
+    </style>
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/src/jquery-2.2.4.min.js"></script>
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/lib/layer/layer.js"></script>
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/lib/leaflet.js"></script>
+    <!--加载中国地图（天地图，谷歌，高德）-->
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/src/leaflet.ChineseTmsProviders.js"></script>
+    <!--动态图标-->
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/lib/pulse/L.Icon.Pulse.js"></script>
+    <!--悬浮button设置-->
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/lib/button/easy-button.js"></script>
+    <!--手机端获取当前坐标系-->
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/lib/coordtransform/mui.min.js"></script>
+    <!--坐标进行转换-->
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/lib/coordtransform/index.js"></script>
+    <!--查询按钮-->
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/lib/search/leaflet-search.js"></script>
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/lib/src/Leaflet.NavBar.js"></script>
+    <script src="http://101.43.193.150:8002/z-UI3/GIS/lib/echarts.min.js"></script>
+</head>
+
+<body>
+
+    <div id="map" style="min-height: 850px;">
+
+    </div>
+    <div id="result2" style="display:none">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>名称</th>
+                    <th>所属区</th>
+                    <th>位置</th>
+                    <th>联系方式</th>
+                    <th>当前人数</th>
+                </tr>
+            </thead>
+            <tbody id="result3table"></tbody>
+        </table>
+    </div>
+    <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+   <script>
+       var map = L.map('map',
+                  {
+                      center: [24.490474, 118.11022],
+                      zoom: 11,
+                      zoomControl: false,
+                      preferCanvas: true
+                  });
+       /*地图图层底色配置*/
+       var baselays = {
+           "矢量图": new L.layerGroup([
+               L.tileLayer('http://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=9e1df5cddf4aff6ad496be6ab4ea5482', {
+                   maxZoom: 100, maxNativeZoom: 18
+               }),
+               L.tileLayer('http://t0.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=9e1df5cddf4aff6ad496be6ab4ea5482', {
+                   maxZoom: 100, maxNativeZoom: 18
+               })
+           ]).addTo(map),
+           "影像": L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+               id: 'mapbox/satellite-v9',//streets-v11、satellite-v9、outdoors-v11、light-v10、satellite-streets-v11、navigation-day-v1、navigation-night-v1
+               tileSize: 512, zoomOffset: -1, maxNativeZoom: 18, maxZoom: 100, preferCanvas: true
+           })
+
+       }
+       L.control.layers(baselays).addTo(map);
+       //添加视图工具
+       L.control.navbar().addTo(map);
+       //初始化查询
+       var markersLayer = new L.LayerGroup();	//layer contain searched elements
+       map.addLayer(markersLayer);
+       //搜索框
+       var controlSearch = new L.Control.Search({
+           position: 'topleft',
+           layer: markersLayer,
+           initial: false,
+           zoom: 12,
+           marker: false
+       });
+       map.addControl(controlSearch);
+       //定位用户的位置
+       let points = [];
+       let pointInfos = [];
+       map.locate({
+           setView: true,
+           maxZoom: 16
+       });
+       //当获取到用户的信息时触发改方法,在这里是自定义一个maker并绑定弹框事件
+       renderZhandian();
+       map.on('locationfound', function (e) {
+           var radius = e.accuracy / 2;
+           L.marker(e.latlng).addTo(map).bindPopup("当前位置");
+           //L.circle(e.latlng, radius).addTo(map);
+           var targetPoint = turf.point([e.latlng.lng, e.latlng.lat]);
+           var pointsCOL = turf.featureCollection(points);
+           var nearest = turf.nearestPoint(targetPoint, pointsCOL);
+           let sdsd = L.marker([nearest.geometry.coordinates[1], nearest.geometry.coordinates[0]]).addTo(map).bindPopup("最近监测点").openPopup();
+
+       });
+       function onLocationError(e) {
+           alert("请打开手机位置设置,否则无法使用地图定位功能");
+       }
+
+       map.on('locationerror', onLocationError);
+
+       //var data = [
+       //  {
+       //      "name": "北京中医药大学",
+       //      "la": 24.50053,
+       //      "lo": 118.141202
+       //  }
+       //];
+
+       setInterval(function () {
+           markersLayer.clearLayers();
+           renderZhandian_cf();
+       }, 30000);
+       function renderZhandian_cf() {
+           var pulsingIcon;
+           let coent = "";
+           for (var item in pointInfos) {
+               var itmeJson = pointInfos[item];
+               let num = Math.floor(Math.random() * 60 + 1)
+               if (num < 20) {
+                   pulsingIcon = L.icon.pulse({ iconSize: [10, 10], fillColor: 'green', color: 'green' });
+               } else if (num < 40) {
+                   pulsingIcon = L.icon.pulse({ iconSize: [10, 10], fillColor: 'yellow', color: 'yellow' });
+               } else {
+                   pulsingIcon = L.icon.pulse({ iconSize: [10, 10], fillColor: 'red', color: 'red' });
+               }
+               var marker = L.marker([itmeJson.weidu, itmeJson.jingdu], { icon: pulsingIcon, title: itmeJson.name, test: "liang" });
+               marker.bindPopup('当前人数：' + num + '人');
+               markersLayer.addLayer(marker);
+               coent = coent + "<tr>"
+                        + "<th>" + item + 1 + "</th>"
+                        + "<th>" + itmeJson.name + "</th>"
+                        + "<th>" + itmeJson.suozaiqu + "</th>"
+                        + "<th>" + itmeJson.weizhi + "</th>"
+                        + "<th>" + itmeJson.lianxidianhua + "</th>"
+                        + "<th>" + num + "</th>"
+                        + "</tr>"
+           }
+           $("#result3table").html(coent)
+       }
+       function renderZhandian() {
+           $.ajax({
+               type: 'get',
+               url: 'http://101.43.193.150:8002/zhandianInfo/getZhandianinfoAllDataTable',
+               data: {},
+               async: false,
+               dataType: 'json',
+               success: function (data) {
+                   pointInfos = data;
+                   var pulsingIcon;
+
+                   let coent = "";
+                   for (var item in data) {
+                       var itmeJson = data[item];
+                       points.push(turf.point([itmeJson.jingdu, itmeJson.weidu]));
+                       let num = Math.floor(Math.random() * 60 + 1)
+                       if (num < 20) {
+                           pulsingIcon = L.icon.pulse({ iconSize: [10, 10], fillColor: 'green', color: 'green' });
+                       } else if (num < 40) {
+                           pulsingIcon = L.icon.pulse({ iconSize: [10, 10], fillColor: 'yellow', color: 'yellow' });
+                       } else {
+                           pulsingIcon = L.icon.pulse({ iconSize: [10, 10], fillColor: 'red', color: 'red' });
+                       }
+                       var marker = L.marker([itmeJson.weidu, itmeJson.jingdu], { icon: pulsingIcon, title: itmeJson.name, test: "liang" });
+                       marker.bindPopup('当前人数：' + num + '人');
+                       //var myIcon = L.divIcon({
+                       //    html: itmeJson.name,
+                       //    className: 'my-div-icon',
+                       //    iconSize: 60
+                       //});
+                       //var markerLable = L.marker([itmeJson.la, itmeJson.lo], { icon: myIcon }).addTo(map);
+                       //markersLayer.addLayer(markerLable);
+                       markersLayer.addLayer(marker);
+                       coent = coent + "<tr>"
+                                + "<th>" + item + 1 + "</th>"
+                                + "<th>" + itmeJson.name + "</th>"
+                                + "<th>" + itmeJson.suozaiqu + "</th>"
+                                + "<th>" + itmeJson.weizhi + "</th>"
+                                + "<th>" + itmeJson.lianxidianhua + "</th>"
+                                + "<th>" + num + "</th>"
+                                + "</tr>"
+                   }
+                   $("#result3table").html(coent)
+               }
+           });
+       }
+
+       //var stromMapClickFlag = true;
+       //var layers = [];
+       var stromMapButton = L.easyButton({
+           states: [{
+               stateName: 'zoom-to-forest',
+               icon: 'fa-globe',
+               title: '当前监测点人流汇总',
+               onClick: function (btn, map) {
+                   //自定页
+                   layer.open({
+                       title: "相关性",
+                       type: 1,
+                       skin: 'layui-layer-demo', //样式类名
+                       closeBtn: 1, //不显示关闭按钮
+                       anim: 2,
+                       area: ['auto'],
+                       shadeClose: true, //开启遮罩关闭
+                       content: $("#result2")
+                   });
+               }
+           }]
+       });
+       stromMapButton.addTo(map);
+   </script>
+</body>
+
+</html>
